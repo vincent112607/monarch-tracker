@@ -104,6 +104,7 @@
   </header>
   <main>
     <div class="stats" id="stats"></div>
+    <div class="card hidden" id="payoutSummary"></div>
 
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:12px">
@@ -187,7 +188,7 @@ const agentName = id => { const p = profiles.find(x => x.id === id); return p ? 
 function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
 
 function statusOf(p){
-  const paid = p.agent_split ? p[p.agent_split.toLowerCase()+'_paid'] : (p.vincent_paid || p.brian_paid);
+  const paid = p.vincent_paid || p.brian_paid;
   if (paid) return {k:'paid', label:'Paid', cls:'p-paid'};
   if (!p.issue_date) return {k:'dep', label:'Awaiting issue', cls:'p-dep'};
   if (p.pay_eligible_date > today()) return {k:'wait', label:'Pay on ' + fmtDate(p.pay_eligible_date), cls:'p-wait'};
@@ -280,10 +281,30 @@ function renderStats(){
     `<div class="stat ${statFilter===k?'active':''}" data-k="${k}"><div class="n">${arr.length}</div><div class="l">${l}</div><div class="s">${sum(arr)} annual premium</div></div>`).join('')
     + (() => { const v = policies.reduce((t,p)=>t+Number(p.vincent_payout||0),0), b = policies.reduce((t,p)=>t+Number(p.brian_payout||0),0);
         return `<div class="stat static"><div class="n">${money(v+b)}</div><div class="l">${isUpline()?'Total paid out':'Total paid to you'}</div><div class="s">Vincent ${money(v)} · Brian ${money(b)}</div></div>`; })();
+  renderPayouts();
   document.querySelectorAll('.stat[data-k]').forEach(el => el.onclick = () => {
     statFilter = statFilter === el.dataset.k ? '' : el.dataset.k;
     $('statusFilter').value = statFilter; render();
   });
+}
+
+function renderPayouts(){
+  const box = $('payoutSummary');
+  if (!isUpline()) { box.classList.add('hidden'); return; }
+  const by = {};
+  policies.forEach(p => {
+    const v = Number(p.vincent_payout||0), b = Number(p.brian_payout||0);
+    if (!v && !b && !p.vincent_paid && !p.brian_paid) return;
+    const r = by[p.agent_id] ||= { n:0, v:0, b:0 };
+    r.n++; r.v += v; r.b += b;
+  });
+  const rows = Object.entries(by).sort((x,y)=>(y[1].v+y[1].b)-(x[1].v+x[1].b));
+  const tv = rows.reduce((t,[,r])=>t+r.v,0), tb = rows.reduce((t,[,r])=>t+r.b,0), tn = rows.reduce((t,[,r])=>t+r.n,0);
+  box.classList.remove('hidden');
+  box.innerHTML = `<h2>Payouts</h2><div class="tablewrap"><table><tr><th>Agent</th><th class="num">Policies paid</th><th class="num">Paid by Vincent</th><th class="num">Paid by Brian</th><th class="num">Total paid</th></tr>`
+    + (rows.length ? rows.map(([id,r]) => `<tr><td>${esc(agentName(id))}</td><td class="num">${r.n}</td><td class="num">${money(r.v)}</td><td class="num">${money(r.b)}</td><td class="num"><strong>${money(r.v+r.b)}</strong></td></tr>`).join('')
+       : `<tr><td colspan="5" class="empty">Nothing paid out yet.</td></tr>`)
+    + `<tr><td><strong>Total</strong></td><td class="num"><strong>${tn}</strong></td><td class="num"><strong>${money(tv)}</strong></td><td class="num"><strong>${money(tb)}</strong></td><td class="num"><strong>${money(tv+tb)}</strong></td></tr></table></div>`;
 }
 
 function render(){
