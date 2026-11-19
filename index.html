@@ -109,6 +109,7 @@
       </div>
       <div class="toolbar">
         <div id="agentFilterWrap" class="hidden"><label>Agent</label><select id="agentFilter"></select></div>
+        <div><label>Agent split</label><select id="splitFilter"><option value="">All</option><option>Vincent</option><option>Brian</option></select></div>
         <div><label>Status</label>
           <select id="statusFilter">
             <option value="">All</option>
@@ -132,6 +133,7 @@
     <form id="policyForm">
       <div class="grid">
         <div id="fAgentWrap" class="hidden"><label>Agent</label><select id="fAgent"></select></div>
+        <div><label>Agent split *</label><select id="fSplit" required><option value="">Select…</option><option>Vincent</option><option>Brian</option></select></div>
         <div><label>Client name *</label><input id="fClient" required></div>
         <div><label>Carrier *</label>
           <input id="fCarrier" list="carriers" required>
@@ -251,11 +253,12 @@ async function load(){
 }
 
 function filtered(){
-  const a = $('agentFilter').value, s = $('statusFilter').value || statFilter, q = $('search').value.trim().toLowerCase();
+  const sp = $('splitFilter').value, a = $('agentFilter').value, s = $('statusFilter').value || statFilter, q = $('search').value.trim().toLowerCase();
   return policies.filter(p =>
     (!a || p.agent_id === a) &&
+    (!sp || p.agent_split === sp) &&
     (!s || statusOf(p).k === s) &&
-    (!q || [p.client_name,p.carrier,p.policy_number,agentName(p.agent_id)].join(' ').toLowerCase().includes(q)));
+    (!q || [p.client_name,p.carrier,p.policy_number,p.agent_split,agentName(p.agent_id)].join(' ').toLowerCase().includes(q)));
 }
 
 function renderStats(){
@@ -279,9 +282,9 @@ function renderStats(){
 function render(){
   renderStats();
   const rows = filtered(), up = isUpline();
-  const head = `<tr>${up?'<th>Agent</th>':''}<th>Client</th><th>Carrier</th><th>Policy #</th><th>Sold</th><th>Issued</th>
+  const head = `<tr>${up?'<th>Agent</th>':''}<th>Agent split</th><th>Client</th><th>Carrier</th><th>Policy #</th><th>Sold</th><th>Issued</th>
     <th class="num">Monthly</th><th class="num">Annual</th><th>Deposit</th><th>Status</th><th>Vincent paid</th><th>Brian paid</th><th>Notes</th><th></th></tr>`;
-  if (!rows.length) { $('table').innerHTML = head + `<tr><td colspan="14" class="empty">No policies here yet.</td></tr>`; return; }
+  if (!rows.length) { $('table').innerHTML = head + `<tr><td colspan="15" class="empty">No policies here yet.</td></tr>`; return; }
   $('table').innerHTML = head + rows.map(p => {
     const st = statusOf(p);
     const dep = up ? `<input type="date" class="dep" data-id="${p.id}" value="${p.deposit_date||''}">` : fmtDate(p.deposit_date);
@@ -292,7 +295,7 @@ function render(){
     };
     return `<tr>
       ${up?`<td>${esc(agentName(p.agent_id))}</td>`:''}
-      <td><strong>${esc(p.client_name)}</strong></td><td>${esc(p.carrier)}</td><td>${esc(p.policy_number||'—')}</td>
+      <td>${esc(p.agent_split||'—')}</td><td><strong>${esc(p.client_name)}</strong></td><td>${esc(p.carrier)}</td><td>${esc(p.policy_number||'—')}</td>
       <td>${fmtDate(p.sold_date)}</td><td>${fmtDate(p.issue_date)}</td>
       <td class="num">${money(p.monthly_premium)}</td><td class="num">${money(p.annual_premium)}</td>
       <td>${dep}</td><td><span class="pill ${st.cls}">${st.label}</span></td>
@@ -312,7 +315,7 @@ async function update(id, patch){
   policies = policies.map(p => p.id === id ? data : p); render(); toast('Saved');
 }
 
-['agentFilter','statusFilter'].forEach(id => $(id).onchange = () => { if(id==='statusFilter') statFilter=$('statusFilter').value; render(); });
+['agentFilter','statusFilter','splitFilter'].forEach(id => $(id).onchange = () => { if(id==='statusFilter') statFilter=$('statusFilter').value; render(); });
 $('search').oninput = render;
 
 // ---------- MODAL ----------
@@ -323,6 +326,7 @@ function openModal(p){
   $('fDepWrap').classList.toggle('hidden', !isUpline());
   $('deleteBtn').classList.toggle('hidden', !(p && isUpline()));
   $('fAgent').value = p ? p.agent_id : me.id;
+  $('fSplit').value = p?.agent_split || '';
   $('fClient').value = p?.client_name || '';
   $('fCarrier').value = p?.carrier || '';
   $('fPolicyNo').value = p?.policy_number || '';
@@ -347,6 +351,7 @@ $('policyForm').onsubmit = async e => {
   e.preventDefault();
   $('saveBtn').disabled = true;
   const rec = {
+    agent_split: $('fSplit').value,
     client_name: $('fClient').value.trim(),
     carrier: $('fCarrier').value.trim(),
     policy_number: $('fPolicyNo').value.trim() || null,
