@@ -59,6 +59,7 @@
   .p-wait{background:var(--warn-bg);color:var(--warn)}
   .p-dep{background:var(--idle-bg);color:var(--idle)}
   .p-paid{background:var(--info-bg);color:var(--info)}
+  .p-nsf{background:#fee2e2;color:#b91c1c}
   .chk{display:flex;align-items:center;gap:6px}
   .chk input{width:16px;height:16px}
   .chk small{color:var(--muted)}
@@ -120,6 +121,7 @@
             <option value="ready">Ready to pay</option>
             <option value="wait">In 10-day wait</option>
             <option value="dep">Awaiting issue</option>
+            <option value="nsf">Insufficient funds</option>
             <option value="paid">Paid</option>
           </select>
         </div>
@@ -152,6 +154,7 @@
         <div><label>Issue date</label><input id="fIssue" type="date"></div>
         <div><label>Monthly premium *</label><input id="fMonthly" type="number" step="0.01" min="0" required></div>
         <div><label>Annual premium</label><input id="fAnnual" disabled></div>
+        <div><label>Insufficient funds</label><label style="display:flex;align-items:center;gap:8px;padding:9px 0;color:var(--ink);font-size:14px"><input type="checkbox" id="fNsf" style="width:16px;height:16px"> Payment failed</label></div>
         <div id="fDepWrap" class="hidden"><label>Deposit received</label><input id="fDeposit" type="date"></div>
       </div>
       <div style="margin-top:12px"><label>Notes</label><textarea id="fNotes"></textarea></div>
@@ -190,6 +193,7 @@ function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show
 function statusOf(p){
   const paid = p.vincent_paid || p.brian_paid;
   if (paid) return {k:'paid', label:'Paid', cls:'p-paid'};
+  if (p.insufficient_funds) return {k:'nsf', label:'Insufficient funds', cls:'p-nsf'};
   if (!p.issue_date) return {k:'dep', label:'Awaiting issue', cls:'p-dep'};
   if (p.pay_eligible_date > today()) return {k:'wait', label:'Pay on ' + fmtDate(p.pay_eligible_date), cls:'p-wait'};
   return {k:'ready', label:'Ready to pay', cls:'p-ready'};
@@ -268,13 +272,14 @@ function filtered(){
 }
 
 function renderStats(){
-  const groups = {ready:[],wait:[],dep:[],paid:[]};
+  const groups = {ready:[],wait:[],dep:[],nsf:[],paid:[]};
   policies.forEach(p => groups[statusOf(p).k].push(p));
   const sum = arr => money(arr.reduce((t,p)=>t+Number(p.annual_premium||0),0));
   const cards = [
     ['ready','Ready to pay', groups.ready],
     ['wait','In 10-day wait', groups.wait],
     ['dep','Awaiting issue', groups.dep],
+    ['nsf','Insufficient funds', groups.nsf],
     ['paid','Paid', groups.paid],
   ];
   $('stats').innerHTML = cards.map(([k,l,arr]) =>
@@ -366,6 +371,7 @@ function openModal(p){
   $('fMonthly').value = p?.monthly_premium ?? '';
   $('fDeposit').value = p?.deposit_date || '';
   $('fNotes').value = p?.notes || '';
+  $('fNsf').checked = !!p?.insufficient_funds;
   $('formMsg').textContent = '';
   calcAnnual();
   $('modal').classList.remove('hidden');
@@ -391,6 +397,7 @@ $('policyForm').onsubmit = async e => {
     issue_date: $('fIssue').value || null,
     monthly_premium: parseFloat($('fMonthly').value),
     notes: $('fNotes').value.trim() || null,
+    insufficient_funds: $('fNsf').checked,
   };
   if (isUpline()) { rec.agent_id = $('fAgent').value; rec.deposit_date = $('fDeposit').value || null; }
   const q = editingId ? sb.from('policies').update(rec).eq('id', editingId) : sb.from('policies').insert(rec);
