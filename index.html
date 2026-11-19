@@ -118,8 +118,8 @@
             <option value="">All</option>
             <option value="ready">Ready to pay</option>
             <option value="wait">In 10-day wait</option>
-            <option value="dep">Awaiting deposit</option>
-            <option value="paid">Fully paid</option>
+            <option value="dep">Awaiting issue</option>
+            <option value="paid">Paid</option>
           </select>
         </div>
         <div><label>Search</label><input id="search" placeholder="Client, carrier, policy #"></div>
@@ -187,8 +187,9 @@ const agentName = id => { const p = profiles.find(x => x.id === id); return p ? 
 function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
 
 function statusOf(p){
-  if (p.vincent_paid && p.brian_paid) return {k:'paid', label:'Fully paid', cls:'p-paid'};
-  if (!p.deposit_date) return {k:'dep', label:'Awaiting deposit', cls:'p-dep'};
+  const paid = p.agent_split ? p[p.agent_split.toLowerCase()+'_paid'] : (p.vincent_paid || p.brian_paid);
+  if (paid) return {k:'paid', label:'Paid', cls:'p-paid'};
+  if (!p.issue_date) return {k:'dep', label:'Awaiting issue', cls:'p-dep'};
   if (p.pay_eligible_date > today()) return {k:'wait', label:'Pay on ' + fmtDate(p.pay_eligible_date), cls:'p-wait'};
   return {k:'ready', label:'Ready to pay', cls:'p-ready'};
 }
@@ -272,8 +273,8 @@ function renderStats(){
   const cards = [
     ['ready','Ready to pay', groups.ready],
     ['wait','In 10-day wait', groups.wait],
-    ['dep','Awaiting deposit', groups.dep],
-    ['paid','Fully paid', groups.paid],
+    ['dep','Awaiting issue', groups.dep],
+    ['paid','Paid', groups.paid],
   ];
   $('stats').innerHTML = cards.map(([k,l,arr]) =>
     `<div class="stat ${statFilter===k?'active':''}" data-k="${k}"><div class="n">${arr.length}</div><div class="l">${l}</div><div class="s">${sum(arr)} annual premium</div></div>`).join('')
