@@ -122,7 +122,7 @@
             <option value="">All</option>
             <option value="ready">Ready to pay</option>
             <option value="wait">In 10-day wait</option>
-            <option value="dep">Awaiting issue</option>
+            <option value="dep">Awaiting payment</option>
             <option value="nsf">Insufficient funds</option>
             <option value="paid">Paid</option>
           </select>
@@ -196,7 +196,7 @@ function statusOf(p){
   const paid = p.vincent_paid || p.brian_paid;
   if (paid) return {k:'paid', label:'Paid', cls:'p-paid'};
   if (p.insufficient_funds) return {k:'nsf', label:'Insufficient funds', cls:'p-nsf'};
-  if (!p.issue_date) return {k:'dep', label:'Awaiting issue', cls:'p-dep'};
+  if (!p.issue_date) return {k:'dep', label:'Awaiting payment', cls:'p-dep'};
   if (p.pay_eligible_date > today()) return {k:'wait', label:'Pay on ' + fmtDate(p.pay_eligible_date), cls:'p-wait'};
   return {k:'ready', label:'Ready to pay', cls:'p-ready'};
 }
@@ -280,7 +280,7 @@ function renderStats(){
   const cards = [
     ['ready','Ready to pay', groups.ready],
     ['wait','In 10-day wait', groups.wait],
-    ['dep','Awaiting issue', groups.dep],
+    ['dep','Awaiting payment', groups.dep],
     ['nsf','Insufficient funds', groups.nsf],
     ['paid','Paid', groups.paid],
   ];
