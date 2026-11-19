@@ -316,8 +316,8 @@ function render(){
   renderStats();
   const rows = filtered(), up = isUpline();
   const head = `<tr>${up?'<th>Agent</th>':''}<th>Agent split</th><th>Client</th><th>Carrier</th><th>Policy type</th><th>Policy #</th><th>Sold</th><th>Issued</th>
-    <th class="num">Monthly</th><th class="num">Annual</th><th>Deposit</th><th>Status</th><th>Vincent payout</th><th>Brian payout</th><th>Notes</th><th></th></tr>`;
-  if (!rows.length) { $('table').innerHTML = head + `<tr><td colspan="16" class="empty">No policies here yet.</td></tr>`; return; }
+    <th class="num">Monthly</th><th class="num">Annual</th><th>Deposit</th><th>Status</th><th>Vincent payout</th><th>Brian payout</th><th>Insufficient funds</th><th>Notes</th><th></th></tr>`;
+  if (!rows.length) { $('table').innerHTML = head + `<tr><td colspan="17" class="empty">No policies here yet.</td></tr>`; return; }
   $('table').innerHTML = head + rows.map(p => {
     const st = statusOf(p);
     const dep = up ? `<input type="date" class="dep" data-id="${p.id}" value="${p.deposit_date||''}">` : fmtDate(p.deposit_date);
@@ -334,12 +334,14 @@ function render(){
       <td class="num">${money(p.monthly_premium)}</td><td class="num">${money(p.annual_premium)}</td>
       <td>${dep}</td><td><span class="pill ${st.cls}">${st.label}</span></td>
       <td>${box('vincent')}</td><td>${box('brian')}</td>
+      <td>${up ? `<label class="nsfchk" style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" data-id="${p.id}" style="width:16px;height:16px" ${p.insufficient_funds?'checked':''}>NSF</label>` : (p.insufficient_funds ? 'Yes' : '—')}</td>
       <td class="notes">${esc(p.notes||'')}</td>
       <td><button class="link" data-edit="${p.id}">Edit</button></td></tr>`;
   }).join('');
 
   document.querySelectorAll('input.dep').forEach(el => el.onchange = () => update(el.dataset.id, { deposit_date: el.value || null }));
   document.querySelectorAll('input.amt').forEach(el => el.onchange = () => update(el.dataset.id, { [el.dataset.who+'_payout']: el.value === '' ? null : parseFloat(el.value) }));
+  document.querySelectorAll('.nsfchk input').forEach(el => el.onchange = () => update(el.dataset.id, { insufficient_funds: el.checked }));
   document.querySelectorAll('.chk input').forEach(el => el.onchange = () => update(el.dataset.id, { [el.dataset.who+'_paid']: el.checked }));
   document.querySelectorAll('[data-edit]').forEach(el => el.onclick = () => openModal(policies.find(p=>p.id===el.dataset.edit)));
 }
