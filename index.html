@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monarch Payment Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+    --brand:#1f3a5f; --brand-ink:#fff; --ok:#15803d; --ok-bg:#dcfce7;
+    --warn:#a16207; --warn-bg:#fef9c3; --info:#1d4ed8; --info-bg:#dbeafe;
+    --idle:#4b5563; --idle-bg:#f3f4f6; --danger:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  header{background:var(--brand);color:var(--brand-ink);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
+  header .who{font-size:13px;opacity:.9;display:flex;align-items:center;gap:10px}
+  main{max-width:1200px;margin:0 auto;padding:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+  .card h2{font-size:15px;margin:0 0 14px}
+  .hidden{display:none!important}
+  label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:4px}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+  textarea{resize:vertical;min-height:38px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:var(--brand);color:#fff}
+  button.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
+  header button.ghost{color:#fff;border-color:rgba(255,255,255,.35)}
+  button.link{background:none;color:var(--brand);padding:0;font-weight:500;text-decoration:underline}
+  button.danger{background:none;color:var(--danger);padding:4px 6px;font-weight:500}
+  button:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .auth{max-width:380px;margin:60px auto}
+  .auth .card{padding:26px}
+  .auth h2{font-size:20px;margin-bottom:4px}
+  .auth p.sub{color:var(--muted);margin:0 0 18px}
+  .auth form>div{margin-bottom:12px}
+  .msg{font-size:13px;margin-top:10px}
+  .msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer}
+  .stat.active{outline:2px solid var(--brand)}
+  .stat .n{font-size:24px;font-weight:700}
+  .stat .l{color:var(--muted);font-size:12px;margin-top:2px}
+  .stat .s{font-size:12px;margin-top:6px;color:var(--ink)}
+  .tablewrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  td.notes{white-space:normal;min-width:140px;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .p-ready{background:var(--ok-bg);color:var(--ok)}
+  .p-wait{background:var(--warn-bg);color:var(--warn)}
+  .p-dep{background:var(--idle-bg);color:var(--idle)}
+  .p-paid{background:var(--info-bg);color:var(--info)}
+  .chk{display:flex;align-items:center;gap:6px}
+  .chk input{width:16px;height:16px}
+  .chk small{color:var(--muted)}
+  input.dep{width:140px;padding:5px 7px}
+  .empty{color:var(--muted);text-align:center;padding:28px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+  .toolbar>div{min-width:160px}
+  .modal{position:fixed;inset:0;background:rgba(17,24,39,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:10}
+  .modal .card{width:100%;max-width:640px}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+  #toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authView" class="auth hidden">
+  <div class="card">
+    <h2 id="authTitle">Sign in</h2>
+    <p class="sub">Monarch Payment Tracker</p>
+    <form id="authForm">
+      <div id="nameWrap" class="hidden"><label>Full name</label><input id="authName" autocomplete="name"></div>
+      <div><label>Email</label><input id="authEmail" type="email" required autocomplete="email"></div>
+      <div><label>Password</label><input id="authPass" type="password" required minlength="6" autocomplete="current-password"></div>
+      <button type="submit" id="authBtn" style="width:100%">Sign in</button>
+    </form>
+    <div class="msg" id="authMsg"></div>
+    <p style="margin:16px 0 0;font-size:13px;color:var(--muted)">
+      <span id="authSwitchText">New here?</span>
+      <button class="link" id="authSwitch">Create an account</button>
+    </p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appView" class="hidden">
+  <header>
+    <h1>Monarch Payment Tracker</h1>
+    <div class="who"><span id="whoName"></span><button class="ghost" id="signOut">Sign out</button></div>
+  </header>
+  <main>
+    <div class="stats" id="stats"></div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <h2 style="margin:0" id="listTitle">Policies</h2>
+        <button id="addBtn">+ Log a policy</button>
+      </div>
+      <div class="toolbar">
+        <div id="agentFilterWrap" class="hidden"><label>Agent</label><select id="agentFilter"></select></div>
+        <div><label>Status</label>
+          <select id="statusFilter">
+            <option value="">All</option>
+            <option value="ready">Ready to pay</option>
+            <option value="wait">In 10-day wait</option>
+            <option value="dep">Awaiting deposit</option>
+            <option value="paid">Fully paid</option>
+          </select>
+        </div>
+        <div><label>Search</label><input id="search" placeholder="Client, carrier, policy #"></div>
+      </div>
+      <div class="tablewrap"><table id="table"></table></div>
+    </div>
+  </main>
+</div>
+
+<!-- POLICY MODAL -->
+<div id="modal" class="modal hidden">
+  <div class="card">
+    <h2 id="modalTitle">Log a policy</h2>
+    <form id="policyForm">
+      <div class="grid">
+        <div id="fAgentWrap" class="hidden"><label>Agent</label><select id="fAgent"></select></div>
+        <div><label>Client name *</label><input id="fClient" required></div>
+        <div><label>Carrier *</label>
+          <input id="fCarrier" list="carriers" required>
+          <datalist id="carriers">
+            <option>Aetna</option><option>Americo</option><option>Aflac</option><option>Ethos</option>
+            <option>Transamerica</option><option>Fidelity (InstaBrain)</option><option>AIG/Corebridge</option><option>Mutual of Omaha</option>
+          </datalist>
+        </div>
+        <div><label>Policy number</label><input id="fPolicyNo"></div>
+        <div><label>Sold date *</label><input id="fSold" type="date" required></div>
+        <div><label>Issue date</label><input id="fIssue" type="date"></div>
+        <div><label>Monthly premium *</label><input id="fMonthly" type="number" step="0.01" min="0" required></div>
+        <div><label>Annual premium</label><input id="fAnnual" disabled></div>
+        <div id="fDepWrap" class="hidden"><label>Deposit received</label><input id="fDeposit" type="date"></div>
+      </div>
+      <div style="margin-top:12px"><label>Notes</label><textarea id="fNotes"></textarea></div>
+      <div class="row" style="justify-content:space-between;margin-top:16px">
+        <button type="button" class="danger hidden" id="deleteBtn">Delete policy</button>
+        <div class="row" style="margin-left:auto">
+          <button type="button" class="ghost" id="cancelBtn">Cancel</button>
+          <button type="submit" id="saveBtn">Save</button>
+        </div>
+      </div>
+      <div class="msg err" id="formMsg"></div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://byrsmtfyeiwcoswfejwn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JKy7Hwjn5pQiRUYkIeGtCQ_zay5j4_P';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = id => document.getElementById(id);
+let me = null, profiles = [], policies = [], editingId = null, signUpMode = false, statFilter = '';
+
+const money = n => n == null ? '' : '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+const fmtTs = t => t ? new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+const today = () => new Date().toLocaleDateString('en-CA');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isUpline = () => me && me.role === 'upline';
+const agentName = id => { const p = profiles.find(x => x.id === id); return p ? (p.full_name || p.email) : '—'; };
+
+function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
+
+function statusOf(p){
+  if (p.vincent_paid && p.brian_paid) return {k:'paid', label:'Fully paid', cls:'p-paid'};
+  if (!p.deposit_date) return {k:'dep', label:'Awaiting deposit', cls:'p-dep'};
+  if (p.pay_eligible_date > today()) return {k:'wait', label:'Pay on ' + fmtDate(p.pay_eligible_date), cls:'p-wait'};
+  return {k:'ready', label:'Ready to pay', cls:'p-ready'};
+}
+
+// ---------- AUTH ----------
+function setAuthMode(up){
+  signUpMode = up;
+  $('authTitle').textContent = up ? 'Create account' : 'Sign in';
+  $('authBtn').textContent = up ? 'Create account' : 'Sign in';
+  $('nameWrap').classList.toggle('hidden', !up);
+  $('authName').required = up;
+  $('authSwitchText').textContent = up ? 'Already have an account?' : 'New here?';
+  $('authSwitch').textContent = up ? 'Sign in' : 'Create an account';
+  $('authMsg').textContent = '';
+}
+$('authSwitch').onclick = () => setAuthMode(!signUpMode);
+
+$('authForm').onsubmit = async e => {
+  e.preventDefault();
+  const msg = $('authMsg'); msg.className = 'msg'; msg.textContent = '';
+  $('authBtn').disabled = true;
+  const email = $('authEmail').value.trim(), password = $('authPass').value;
+  try {
+    if (signUpMode) {
+      const { data, error } = await sb.auth.signUp({ email, password,
+        options:{ data:{ full_name: $('authName').value.trim() }, emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw error;
+      if (!data.session) { msg.className='msg ok'; msg.textContent='Check your email to confirm your account, then sign in.'; setAuthMode(false); msg.className='msg ok'; msg.textContent='Check your email to confirm your account, then sign in.'; }
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    }
+  } catch(err){ msg.className='msg err'; msg.textContent = err.message; }
+  $('authBtn').disabled = false;
+};
+$('signOut').onclick = () => sb.auth.signOut();
+
+sb.auth.onAuthStateChange((_evt, session) => { session ? boot(session.user) : showAuth(); });
+
+function showAuth(){ me=null; $('appView').classList.add('hidden'); $('authView').classList.remove('hidden'); }
+
+async function boot(user){
+  let { data: prof } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+  if (!prof) { await new Promise(r=>setTimeout(r,800)); ({ data: prof } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle()); }
+  me = prof || { id:user.id, email:user.email, full_name:'', role:'downline' };
+  $('authView').classList.add('hidden'); $('appView').classList.remove('hidden');
+  $('whoName').textContent = (me.full_name || me.email) + (isUpline() ? ' · Upline' : '');
+  $('agentFilterWrap').classList.toggle('hidden', !isUpline());
+  $('listTitle').textContent = isUpline() ? 'All policies' : 'My policies';
+  await load();
+}
+
+// ---------- DATA ----------
+async function load(){
+  const [pr, po] = await Promise.all([
+    sb.from('profiles').select('id,email,full_name,role').order('full_name'),
+    sb.from('policies').select('*').order('sold_date', { ascending:false })
+  ]);
+  if (po.error) { toast(po.error.message); return; }
+  profiles = pr.data || []; policies = po.data || [];
+  const af = $('agentFilter'), cur = af.value;
+  af.innerHTML = '<option value="">All agents</option>' + profiles.map(p=>`<option value="${p.id}">${esc(p.full_name||p.email)}</option>`).join('');
+  af.value = cur;
+  $('fAgent').innerHTML = profiles.map(p=>`<option value="${p.id}">${esc(p.full_name||p.email)}${p.role==='upline'?' (upline)':''}</option>`).join('');
+  render();
+}
+
+function filtered(){
+  const a = $('agentFilter').value, s = $('statusFilter').value || statFilter, q = $('search').value.trim().toLowerCase();
+  return policies.filter(p =>
+    (!a || p.agent_id === a) &&
+    (!s || statusOf(p).k === s) &&
+    (!q || [p.client_name,p.carrier,p.policy_number,agentName(p.agent_id)].join(' ').toLowerCase().includes(q)));
+}
+
+function renderStats(){
+  const groups = {ready:[],wait:[],dep:[],paid:[]};
+  policies.forEach(p => groups[statusOf(p).k].push(p));
+  const sum = arr => money(arr.reduce((t,p)=>t+Number(p.annual_premium||0),0));
+  const cards = [
+    ['ready','Ready to pay', groups.ready],
+    ['wait','In 10-day wait', groups.wait],
+    ['dep','Awaiting deposit', groups.dep],
+    ['paid','Fully paid', groups.paid],
+  ];
+  $('stats').innerHTML = cards.map(([k,l,arr]) =>
+    `<div class="stat ${statFilter===k?'active':''}" data-k="${k}"><div class="n">${arr.length}</div><div class="l">${l}</div><div class="s">${sum(arr)} annual premium</div></div>`).join('');
+  document.querySelectorAll('.stat').forEach(el => el.onclick = () => {
+    statFilter = statFilter === el.dataset.k ? '' : el.dataset.k;
+    $('statusFilter').value = statFilter; render();
+  });
+}
+
+function render(){
+  renderStats();
+  const rows = filtered(), up = isUpline();
+  const head = `<tr>${up?'<th>Agent</th>':''}<th>Client</th><th>Carrier</th><th>Policy #</th><th>Sold</th><th>Issued</th>
+    <th class="num">Monthly</th><th class="num">Annual</th><th>Deposit</th><th>Status</th><th>Vincent paid</th><th>Brian paid</th><th>Notes</th><th></th></tr>`;
+  if (!rows.length) { $('table').innerHTML = head + `<tr><td colspan="14" class="empty">No policies here yet.</td></tr>`; return; }
+  $('table').innerHTML = head + rows.map(p => {
+    const st = statusOf(p);
+    const dep = up ? `<input type="date" class="dep" data-id="${p.id}" value="${p.deposit_date||''}">` : fmtDate(p.deposit_date);
+    const box = (who) => {
+      const v = p[who+'_paid'], at = p[who+'_paid_at'];
+      return up ? `<label class="chk"><input type="checkbox" data-id="${p.id}" data-who="${who}" ${v?'checked':''}><small>${v?fmtTs(at):''}</small></label>`
+                : (v ? `✓ <small style="color:var(--muted)">${fmtTs(at)}</small>` : '—');
+    };
+    return `<tr>
+      ${up?`<td>${esc(agentName(p.agent_id))}</td>`:''}
+      <td><strong>${esc(p.client_name)}</strong></td><td>${esc(p.carrier)}</td><td>${esc(p.policy_number||'—')}</td>
+      <td>${fmtDate(p.sold_date)}</td><td>${fmtDate(p.issue_date)}</td>
+      <td class="num">${money(p.monthly_premium)}</td><td class="num">${money(p.annual_premium)}</td>
+      <td>${dep}</td><td><span class="pill ${st.cls}">${st.label}</span></td>
+      <td>${box('vincent')}</td><td>${box('brian')}</td>
+      <td class="notes">${esc(p.notes||'')}</td>
+      <td><button class="link" data-edit="${p.id}">Edit</button></td></tr>`;
+  }).join('');
+
+  document.querySelectorAll('input.dep').forEach(el => el.onchange = () => update(el.dataset.id, { deposit_date: el.value || null }));
+  document.querySelectorAll('.chk input').forEach(el => el.onchange = () => update(el.dataset.id, { [el.dataset.who+'_paid']: el.checked }));
+  document.querySelectorAll('[data-edit]').forEach(el => el.onclick = () => openModal(policies.find(p=>p.id===el.dataset.edit)));
+}
+
+async function update(id, patch){
+  const { data, error } = await sb.from('policies').update(patch).eq('id', id).select().single();
+  if (error) { toast(error.message); return load(); }
+  policies = policies.map(p => p.id === id ? data : p); render(); toast('Saved');
+}
+
+['agentFilter','statusFilter'].forEach(id => $(id).onchange = () => { if(id==='statusFilter') statFilter=$('statusFilter').value; render(); });
+$('search').oninput = render;
+
+// ---------- MODAL ----------
+function openModal(p){
+  editingId = p ? p.id : null;
+  $('modalTitle').textContent = p ? 'Edit policy' : 'Log a policy';
+  $('fAgentWrap').classList.toggle('hidden', !isUpline());
+  $('fDepWrap').classList.toggle('hidden', !isUpline());
+  $('deleteBtn').classList.toggle('hidden', !(p && isUpline()));
+  $('fAgent').value = p ? p.agent_id : me.id;
+  $('fClient').value = p?.client_name || '';
+  $('fCarrier').value = p?.carrier || '';
+  $('fPolicyNo').value = p?.policy_number || '';
+  $('fSold').value = p?.sold_date || today();
+  $('fIssue').value = p?.issue_date || '';
+  $('fMonthly').value = p?.monthly_premium ?? '';
+  $('fDeposit').value = p?.deposit_date || '';
+  $('fNotes').value = p?.notes || '';
+  $('formMsg').textContent = '';
+  calcAnnual();
+  $('modal').classList.remove('hidden');
+  $('fClient').focus();
+}
+function closeModal(){ $('modal').classList.add('hidden'); }
+function calcAnnual(){ const m = parseFloat($('fMonthly').value); $('fAnnual').value = isNaN(m) ? '' : money(m*12); }
+$('fMonthly').oninput = calcAnnual;
+$('addBtn').onclick = () => openModal(null);
+$('cancelBtn').onclick = closeModal;
+$('modal').onclick = e => { if (e.target === $('modal')) closeModal(); };
+
+$('policyForm').onsubmit = async e => {
+  e.preventDefault();
+  $('saveBtn').disabled = true;
+  const rec = {
+    client_name: $('fClient').value.trim(),
+    carrier: $('fCarrier').value.trim(),
+    policy_number: $('fPolicyNo').value.trim() || null,
+    sold_date: $('fSold').value,
+    issue_date: $('fIssue').value || null,
+    monthly_premium: parseFloat($('fMonthly').value),
+    notes: $('fNotes').value.trim() || null,
+  };
+  if (isUpline()) { rec.agent_id = $('fAgent').value; rec.deposit_date = $('fDeposit').value || null; }
+  const q = editingId ? sb.from('policies').update(rec).eq('id', editingId) : sb.from('policies').insert(rec);
+  const { error } = await q;
+  $('saveBtn').disabled = false;
+  if (error) { $('formMsg').textContent = error.message; return; }
+  closeModal(); toast(editingId ? 'Policy updated' : 'Policy logged'); load();
+};
+
+let delArmed = false;
+$('deleteBtn').onclick = async () => {
+  if (!delArmed) { delArmed = true; $('deleteBtn').textContent = 'Click again to delete'; setTimeout(()=>{delArmed=false;$('deleteBtn').textContent='Delete policy';},3000); return; }
+  delArmed = false; $('deleteBtn').textContent = 'Delete policy';
+  const { error } = await sb.from('policies').delete().eq('id', editingId);
+  if (error) { $('formMsg').textContent = error.message; return; }
+  closeModal(); toast('Policy deleted'); load();
+};
+
+setInterval(() => { if (me) load(); }, 60000);
+</script>
+</body>
+</html>
