@@ -19,7 +19,7 @@
   header{background:var(--brand);color:var(--brand-ink);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
   header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
   header .who{font-size:13px;opacity:.9;display:flex;align-items:center;gap:10px}
-  main{max-width:1200px;margin:0 auto;padding:20px}
+  main{max-width:none;margin:0;padding:16px 20px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
   .card h2{font-size:15px;margin:0 0 14px}
   .hidden{display:none!important}
@@ -49,12 +49,14 @@
   .stat .s{font-size:12px;margin-top:6px;color:var(--ink)}
   .tablewrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .sub{color:var(--muted);font-size:11.5px}
+  .note{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   td.notes{white-space:normal;min-width:140px;color:var(--muted)}
   tr:last-child td{border-bottom:0}
   .num{text-align:right;font-variant-numeric:tabular-nums}
-  .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill{white-space:nowrap;display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600}
   .p-ready{background:var(--ok-bg);color:var(--ok)}
   .p-wait{background:var(--warn-bg);color:var(--warn)}
   .p-dep{background:var(--idle-bg);color:var(--idle)}
@@ -63,9 +65,9 @@
   .chk{display:flex;align-items:center;gap:6px}
   .chk input{width:16px;height:16px}
   .chk small{color:var(--muted)}
-  input.dep{width:140px;padding:5px 7px}
-  .pay{display:flex;align-items:center;gap:8px}
-  input.amt{width:95px;padding:5px 7px}
+  input.dep{width:130px;padding:4px 6px}
+  .pay{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+  input.amt{width:90px;padding:4px 6px}
   .stat.static{cursor:default}
   .empty{color:var(--muted);text-align:center;padding:28px}
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
@@ -315,27 +317,28 @@ function renderPayouts(){
 function render(){
   renderStats();
   const rows = filtered(), up = isUpline();
-  const head = `<tr>${up?'<th>Agent</th>':''}<th>Agent split</th><th>Client</th><th>Carrier</th><th>Policy type</th><th>Policy #</th><th>Sold</th><th>Issued</th>
-    <th class="num">Monthly</th><th class="num">Annual</th><th>Deposit</th><th>Status</th><th>Vincent payout</th><th>Brian payout</th><th>Insufficient funds</th><th>Notes</th><th></th></tr>`;
-  if (!rows.length) { $('table').innerHTML = head + `<tr><td colspan="17" class="empty">No policies here yet.</td></tr>`; return; }
+  const cols = up ? 12 : 10;
+  const head = `<tr>${up?'<th>Agent</th>':''}<th>Split</th><th>Client</th><th>Carrier / type</th><th>Sold / issued</th>
+    <th class="num">Premium</th>${up?'<th>Deposit</th>':''}<th>Status</th><th>Vincent</th><th>Brian</th><th>NSF</th><th></th></tr>`;
+  if (!rows.length) { $('table').innerHTML = head + `<tr><td colspan="${cols}" class="empty">No policies here yet.</td></tr>`; return; }
   $('table').innerHTML = head + rows.map(p => {
     const st = statusOf(p);
-    const dep = up ? `<input type="date" class="dep" data-id="${p.id}" value="${p.deposit_date||''}">` : fmtDate(p.deposit_date);
     const box = (who) => {
-      const v = p[who+'_paid'], at = p[who+'_paid_at'];
-      const amt = p[who+'_payout'];
+      const v = p[who+'_paid'], at = p[who+'_paid_at'], amt = p[who+'_payout'];
       return up ? `<div class="pay"><input class="amt" type="number" step="0.01" min="0" placeholder="$ amount" data-id="${p.id}" data-who="${who}" value="${amt ?? ''}"><label class="chk"><input type="checkbox" data-id="${p.id}" data-who="${who}" ${v?'checked':''}>Paid <small>${v?fmtTs(at):''}</small></label></div>`
-                : (v ? `✓ ${amt!=null?money(amt):'Paid'} <small style="color:var(--muted)">${fmtTs(at)}</small>` : '—');
+                : (v ? `✓ ${amt!=null?money(amt):'Paid'}<br><small class="sub">${fmtTs(at)}</small>` : '—');
     };
+    const nsf = up ? `<label class="nsfchk"><input type="checkbox" data-id="${p.id}" ${p.insufficient_funds?'checked':''}></label>` : (p.insufficient_funds ? 'Yes' : '—');
     return `<tr>
       ${up?`<td>${esc(agentName(p.agent_id))}</td>`:''}
-      <td>${esc(p.agent_split||'—')}</td><td><strong>${esc(p.client_name)}</strong></td><td>${esc(p.carrier)}</td><td>${esc(p.policy_type||'—')}</td><td>${esc(p.policy_number||'—')}</td>
-      <td>${fmtDate(p.sold_date)}</td><td>${fmtDate(p.issue_date)}</td>
-      <td class="num">${money(p.monthly_premium)}</td><td class="num">${money(p.annual_premium)}</td>
-      <td>${dep}</td><td><span class="pill ${st.cls}">${st.label}</span></td>
-      <td>${box('vincent')}</td><td>${box('brian')}</td>
-      <td>${up ? `<label class="nsfchk" style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" data-id="${p.id}" style="width:16px;height:16px" ${p.insufficient_funds?'checked':''}>NSF</label>` : (p.insufficient_funds ? 'Yes' : '—')}</td>
-      <td class="notes">${esc(p.notes||'')}</td>
+      <td>${esc(p.agent_split||'—')}</td>
+      <td><strong>${esc(p.client_name)}</strong><br><small class="sub">${esc(p.policy_number||'')}</small>${p.notes?`<small class="sub note" title="${esc(p.notes)}">${esc(p.notes)}</small>`:''}</td>
+      <td>${esc(p.carrier)}<br><small class="sub">${esc(p.policy_type||'—')}</small></td>
+      <td>${fmtDate(p.sold_date)}<br><small class="sub">Issued ${fmtDate(p.issue_date)}</small></td>
+      <td class="num">${money(p.monthly_premium)}/mo<br><small class="sub">${money(p.annual_premium)}/yr</small></td>
+      ${up?`<td><input type="date" class="dep" data-id="${p.id}" value="${p.deposit_date||''}"></td>`:''}
+      <td><span class="pill ${st.cls}">${st.label}</span></td>
+      <td>${box('vincent')}</td><td>${box('brian')}</td><td>${nsf}</td>
       <td><button class="link" data-edit="${p.id}">Edit</button></td></tr>`;
   }).join('');
 
