@@ -3,38 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monarch Payment Tracker</title>
+<title>Monarch Financial Group · Payment Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --bg:#f6f7f9; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
-    --brand:#1f3a5f; --brand-ink:#fff; --ok:#15803d; --ok-bg:#dcfce7;
-    --warn:#a16207; --warn-bg:#fef9c3; --info:#1d4ed8; --info-bg:#dbeafe;
-    --idle:#4b5563; --idle-bg:#f3f4f6; --danger:#b91c1c;
+    color-scheme:dark;
+    --bg:#07090d; --card:#11151d; --ink:#e8eaee; --muted:#8f98a8; --line:#232b38;
+    --brand:#1f56b3; --brand-ink:#fff; --silver:#c9ced6; --field:#0b0f16;
+    --ok:#4ade80; --ok-bg:rgba(34,197,94,.15); --warn:#facc15; --warn-bg:rgba(234,179,8,.14);
+    --info:#8ab8ff; --info-bg:rgba(59,130,246,.2); --idle:#aab2c0; --idle-bg:rgba(148,163,184,.14); --danger:#f87171;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-  header{background:var(--brand);color:var(--brand-ink);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-  header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
+  header{background:linear-gradient(90deg,#000 0%,#06101f 55%,#0d2347 100%);border-bottom:1px solid #1c2a42;color:var(--brand-ink);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  header h1{font-family:Cinzel,Georgia,serif;font-size:21px;margin:0;font-weight:700;letter-spacing:1.5px;background:linear-gradient(180deg,#fff 0%,#c9ced6 55%,#8e97a4 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brandbar{display:flex;align-items:center;gap:12px}
+  .logo{width:54px;height:54px;border-radius:10px;background:#000 url('EEEC5858-E7E4-4718-9CC1-7AD58E3002BB.png') 50% 34%/155% no-repeat;flex:none}
+  .tagline{font-size:10.5px;letter-spacing:2.5px;text-transform:uppercase;color:#8fb0e0;margin-top:2px}
+  .authlogo{display:block;width:250px;max-width:80%;margin:0 auto 18px;border-radius:14px}
   header .who{font-size:13px;opacity:.9;display:flex;align-items:center;gap:10px}
   main{max-width:none;margin:0;padding:16px 20px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
   .card h2{font-size:15px;margin:0 0 14px}
   .hidden{display:none!important}
   label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:4px}
-  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--field);color:var(--ink)}
   textarea{resize:vertical;min-height:38px}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
   button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:var(--brand);color:#fff}
-  button.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
-  header button.ghost{color:#fff;border-color:rgba(255,255,255,.35)}
-  button.link{background:none;color:var(--brand);padding:0;font-weight:500;text-decoration:underline}
+  button.ghost{background:transparent;color:var(--silver);border:1px solid var(--line)}
+  header button.ghost{color:#fff;border-color:rgba(201,206,214,.35)}
+  button.link{background:none;color:var(--info);padding:0;font-weight:500;text-decoration:underline}
   button.danger{background:none;color:var(--danger);padding:4px 6px;font-weight:500}
   button:disabled{opacity:.5;cursor:default}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .auth{max-width:380px;margin:60px auto}
+  .auth{max-width:400px;margin:36px auto}
   .auth .card{padding:26px}
   .auth h2{font-size:20px;margin-bottom:4px}
   .auth p.sub{color:var(--muted);margin:0 0 18px}
@@ -43,7 +48,7 @@
   .msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer}
-  .stat.active{outline:2px solid var(--brand)}
+  .stat.active{outline:2px solid var(--brand);background:#0f1a2e}
   .stat .n{font-size:24px;font-weight:700}
   .stat .l{color:var(--muted);font-size:12px;margin-top:2px}
   .stat .s{font-size:12px;margin-top:6px;color:var(--ink)}
@@ -61,7 +66,7 @@
   .p-wait{background:var(--warn-bg);color:var(--warn)}
   .p-dep{background:var(--idle-bg);color:var(--idle)}
   .p-paid{background:var(--info-bg);color:var(--info)}
-  .p-nsf{background:#fee2e2;color:#b91c1c}
+  .p-nsf{background:rgba(239,68,68,.17);color:#f87171}
   .chk{display:flex;align-items:center;gap:6px}
   .chk input{width:16px;height:16px}
   .chk small{color:var(--muted)}
@@ -72,9 +77,9 @@
   .empty{color:var(--muted);text-align:center;padding:28px}
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
   .toolbar>div{min-width:160px}
-  .modal{position:fixed;inset:0;background:rgba(17,24,39,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:10}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:10}
   .modal .card{width:100%;max-width:640px}
-  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--brand);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
   #toast.show{opacity:1}
 </style>
 </head>
@@ -82,9 +87,10 @@
 
 <!-- AUTH -->
 <div id="authView" class="auth hidden">
+  <img class="authlogo" src="EEEC5858-E7E4-4718-9CC1-7AD58E3002BB.png" alt="Monarch Financial Group">
   <div class="card">
     <h2 id="authTitle">Sign in</h2>
-    <p class="sub">Monarch Payment Tracker</p>
+    <p class="sub">Monarch Financial Group · Payment Tracker</p>
     <form id="authForm">
       <div id="nameWrap" class="hidden"><label>Full name</label><input id="authName" autocomplete="name"></div>
       <div><label>Email</label><input id="authEmail" type="email" required autocomplete="email"></div>
@@ -102,7 +108,7 @@
 <!-- APP -->
 <div id="appView" class="hidden">
   <header>
-    <h1>Monarch Payment Tracker</h1>
+    <div class="brandbar"><div class="logo" role="img" aria-label="Monarch Financial Group logo"></div><div><h1>Monarch Financial Group</h1><div class="tagline">Payment Tracker</div></div></div>
     <div class="who"><span id="whoName"></span><button class="ghost" id="signOut">Sign out</button></div>
   </header>
   <main>
